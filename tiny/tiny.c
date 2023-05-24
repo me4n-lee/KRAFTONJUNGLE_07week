@@ -44,8 +44,7 @@ int main(int argc, char **argv)
   }
 }
 
-void doit(int fd)
-{
+void doit(int fd){
 
   int is_static;
   struct stat sbuf;
@@ -60,7 +59,8 @@ void doit(int fd)
   printf("%s", buf);
   sscanf(buf, "%s %s %s", method, uri, version);
 
-  if(strcasecmp(method, "GET")){
+  // if(strcasecmp(method, "GET")){
+  if(strcasecmp(method, "GET") * strcasecmp(method, "HEAD")){
 
     clienterror(fd, method, "501", "Not implemented", "Tiny does not implement this method");
 
@@ -214,6 +214,18 @@ void serve_static(int fd, char *filename, int filesize){
   Rio_writen(fd, srcp, filesize);
   Munmap(srcp, filesize);
 
+  // 과제 11.9
+  // srcfd = Open(filename, O_RDONLY, 0);
+  // buf = (char *)malloc(filesize * sizeof(char));
+  // if (buf == NULL) {
+  //   fprintf(stderr, "Memory allocation failed.\n");
+  //   return;
+  // }
+  // Rio_readn(srcfd, buf, filesize);
+  // Close(srcfd);
+  // Rio_writen(fd, buf, filesize);
+  // free(buf);
+
 }
 
 /*
@@ -239,6 +251,16 @@ void get_filetype(char *filename, char *filetype){
   else if (strstr(filename, ".jpg")){
     
     strcpy(filetype, "image/jpeg");
+
+  }
+  else if (strstr(filename, ".mpg")){
+    
+    strcpy(filetype, "video/mpg");
+
+  }
+  else if (strstr(filename, ".mp4")){
+    
+    strcpy(filetype, "video/mp4");
 
   }
   else{
