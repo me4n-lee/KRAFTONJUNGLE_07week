@@ -15,6 +15,8 @@ void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
+void serve_headers_only(int fd, char *filename, int filesize);
+
 
 int main(int argc, char **argv)
 {
@@ -70,6 +72,7 @@ void doit(int fd){
 
   read_requesthdrs(&rio);
   /* Parse URI from GET request */
+
   is_static = parse_uri(uri, filename, cgiargs);
 
   if(stat(filename, &sbuf) < 0){
@@ -90,7 +93,19 @@ void doit(int fd){
 
     }
 
-    serve_static(fd, filename, sbuf.st_size);  
+    if(strcasecmp(method, "GET") == 0){ // only send body if method is GET
+
+      serve_static(fd, filename, sbuf.st_size);  
+
+    } 
+    else{
+
+      // HEAD method; do not send body, just headers
+      serve_headers_only(fd, filename, sbuf.st_size);
+
+    }
+
+    // serve_static(fd, filename, sbuf.st_size);  
 
   }
   else{
@@ -107,6 +122,23 @@ void doit(int fd){
 
   }
 
+}
+
+void serve_headers_only(int fd, char *filename, int filesize){
+
+  char filetype[MAXLINE], buf[MAXBUF];
+
+  /* Send response headers to client */
+  get_filetype(filename, filetype);
+  sprintf(buf, "HTTP/1.0 200 OK\r\n");
+  sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
+  sprintf(buf, "%sConnection: close\r\n", buf);
+  sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
+  sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
+  Rio_writen(fd, buf, strlen(buf));
+  printf("Response headers:\n");
+  printf("%s", buf);
+  
 }
 
 
@@ -207,24 +239,25 @@ void serve_static(int fd, char *filename, int filesize){
   printf("Response headers:\n");
   printf("%s", buf);
 
-  /* Send response body to client */
-  srcfd = Open(filename, O_RDONLY, 0);
-  srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
-  Close(srcfd);
-  Rio_writen(fd, srcp, filesize);
-  Munmap(srcp, filesize);
+  // /* Send response body to client */
+  // srcfd = Open(filename, O_RDONLY, 0);
+  // srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
+  // Close(srcfd);
+  // Rio_writen(fd, srcp, filesize);
+  // Munmap(srcp, filesize);
 
   // 과제 11.9
-  // srcfd = Open(filename, O_RDONLY, 0);
-  // buf = (char *)malloc(filesize * sizeof(char));
-  // if (buf == NULL) {
-  //   fprintf(stderr, "Memory allocation failed.\n");
-  //   return;
-  // }
-  // Rio_readn(srcfd, buf, filesize);
-  // Close(srcfd);
-  // Rio_writen(fd, buf, filesize);
-  // free(buf);
+
+  srcfd = Open(filename, O_RDONLY, 0);
+  srcp = (char *)malloc(filesize * sizeof(char));
+  if (srcp == NULL) {
+    fprintf(stderr, "Memory allocation failed.\n");
+    return;
+  }
+  Rio_readn(srcfd, srcp, filesize);
+  Close(srcfd);
+  Rio_writen(fd, srcp, filesize);
+  free(srcp);
 
 }
 
